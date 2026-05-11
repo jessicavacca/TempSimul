@@ -8,7 +8,7 @@ class PatchTransformerForecast(nn.Module):
     The model consists of an encoder architecture that takes in patches of the lookback window
     and predicts the future values for the horizon with a linear projection. 
     """
-    
+
     def __init__(
         self,
         lookback: int,
@@ -42,7 +42,9 @@ class PatchTransformerForecast(nn.Module):
         self.n_patches = lookback // patch_len
         self.d_model = d_model
 
-        self.patch_projection = nn.Conv1d(patch_len * input_dim, d_model, kernel_size=1)
+        self.patch_projection = nn.Conv1d(patch_len * input_dim,
+                                          d_model,
+                                          kernel_size=1)
 
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model,
@@ -51,7 +53,8 @@ class PatchTransformerForecast(nn.Module):
             dropout=dropout,
             batch_first=True,
         )
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer,
+                                                         num_layers=num_layers)
 
         self.output_projection = nn.Linear(d_model * self.n_patches, horizon)
 
@@ -62,7 +65,7 @@ class PatchTransformerForecast(nn.Module):
         x = x.unfold(dimension=2, size=self.patch_len, step=self.patch_len)
         x = x.contiguous().view(batch_size, n_channels * self.patch_len, -1)
         x = self.patch_projection(x)
-
+        x = x.permute(0, 2, 1)  # (batch_size, input_dim, lookback)
         # Add positional encoding
         pe = positional_encoding(self.n_patches, self.d_model, device=x.device)
         x = x + pe
