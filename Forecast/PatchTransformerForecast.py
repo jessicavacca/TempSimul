@@ -1,4 +1,3 @@
-import torch
 from torch import Tensor, nn
 from Forecast.Encodings import positional_encoding
 
