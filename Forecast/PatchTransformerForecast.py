@@ -1,5 +1,6 @@
 from torch import Tensor, nn
 from Forecast.Encodings import positional_encoding
+import torch
 
 
 class PatchTransformerForecast(nn.Module):
@@ -21,6 +22,7 @@ class PatchTransformerForecast(nn.Module):
         n_heads: int = 8,
         dim_feedforward: int = 256,
         dropout: float = 0.1,
+        causal: bool = True,
     ) -> None:
         super().__init__()
 
@@ -41,6 +43,7 @@ class PatchTransformerForecast(nn.Module):
         self.patch_len = patch_len
         self.n_patches = lookback // patch_len
         self.d_model = d_model
+        self.causal = causal
 
         self.patch_projection = nn.Conv1d(patch_len * input_dim,
                                           d_model,
@@ -58,6 +61,11 @@ class PatchTransformerForecast(nn.Module):
 
         self.output_projection = nn.Linear(d_model * self.n_patches, horizon)
 
+    def _generate_causal_mask(self, length: int,
+                              device: torch.device) -> Tensor:
+        return nn.Transformer.generate_square_subsequent_mask(length,
+                                                              device=device)
+
     def forward(self, x: Tensor) -> Tensor:
         batch_size, n_channels, n_samples = x.shape
 
@@ -66,12 +74,18 @@ class PatchTransformerForecast(nn.Module):
         x = x.contiguous().view(batch_size, n_channels * self.patch_len, -1)
         x = self.patch_projection(x)
         x = x.permute(0, 2, 1)  # (batch_size, input_dim, lookback)
+
         # Add positional encoding
         pe = positional_encoding(self.n_patches, self.d_model, device=x.device)
         x = x + pe
 
         # Encode
-        x = self.transformer_encoder(x)
+        if self.causal:
+            x = self.transformer_encoder(x,
+                                         mask=self._generate_causal_mask(
+                                             x.size(1), x.device))
+        else:
+            x = self.transformer_encoder(x)
 
         # Flatten and project to output
         x = x.contiguous().view(batch_size, -1)

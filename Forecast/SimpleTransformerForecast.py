@@ -23,6 +23,7 @@ class SimpleTransformerForecast(nn.Module):
         n_heads: int = 8,
         dim_feedforward: int = 256,
         dropout: float = 0.1,
+        causal: bool = True,
     ) -> None:
         super().__init__()
 
@@ -37,7 +38,7 @@ class SimpleTransformerForecast(nn.Module):
         self.horizon = horizon
         self.lookback = lookback
         self.d_model = d_model
-
+        self.causal = causal
         self.input_projection = nn.Linear(input_dim, d_model)
 
         encoder_layer = nn.TransformerEncoderLayer(
@@ -57,6 +58,11 @@ class SimpleTransformerForecast(nn.Module):
             d_model,
             device='cuda' if torch.cuda.is_available() else 'cpu')
 
+    def _generate_causal_mask(self, length: int,
+                              device: torch.device) -> Tensor:
+        return nn.Transformer.generate_square_subsequent_mask(length,
+                                                              device=device)
+
     def forward(self, x: Tensor) -> Tensor:
         """
         Args:
@@ -73,11 +79,15 @@ class SimpleTransformerForecast(nn.Module):
         x += self.positional_encoding
 
         # Pass through transformer encoder
-        x = self.transformer_encoder(x)  # (batch_size, lookback, d_model)
+        if self.causal:
+            x = self.transformer_encoder(
+                x, mask=self._generate_causal_mask(
+                    x.size(1), x.device))  # (batch_size, lookback, d_model)
+        else:
+            x = self.transformer_encoder(x)
         # print('Tx.shape:', x.shape)
-        # Take the last output of the encoder and project to target dimension
-        # x = x[:, -1, :]  # (batch_size, d_model)
-        x = self.output_projection(x.reshape(x.size(0), -1))  # (batch_size, target_dim * horizon)
+        x = self.output_projection(x.reshape(
+            x.size(0), -1))  # (batch_size, target_dim * horizon)
         # print('Px.shape:', x.shape)
         x = x.view(-1, self.target_dim,
                    self.horizon)  # (batch_size, horizon, target_dim)
