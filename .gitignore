@@ -10,6 +10,7 @@ wheels/
 .venv
 .env
 
+test/*
 
 Preprocess/PTBXL/*.npz
 
