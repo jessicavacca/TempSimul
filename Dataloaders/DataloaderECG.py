@@ -23,6 +23,39 @@ class ECGDataset(Dataset):
         - horizon: forecasting horizon
         - stride: stride between samples (default 1)
     """
+    def normalize(self, x, norm):
+        if norm == 'minmax':
+            self.mean = np.min(self.X_train, axis=(0, 2))
+            self.std = np.max(self.X_train, axis=(0, 2)) - np.min(
+                self.X_train, axis=(0, 2))
+            self.X_train = (np.swapaxes(self.X_train, 1, 2) -
+                            self.mean) / self.std
+            self.X_train = np.swapaxes(self.X_train, 1, 2)
+        elif norm == 'robust':
+            q1 = np.quantile(self.X_train, 0.01, axis=(0, 2))
+            q3 = np.quantile(self.X_train, 0.99, axis=(0, 2))
+            self.mean = q1
+            self.std = q3 - q1
+            self.X_train = (np.swapaxes(self.X_train, 1, 2) -
+                            self.mean) / self.std
+            self.X_train = np.swapaxes(self.X_train, 1, 2)
+        elif norm == 'zscore':
+            self.mean = np.mean(self.X_train, axis=(0, 2))
+            self.std = np.std(self.X_train, axis=(0, 2))
+            self.X_train = (np.swapaxes(self.X_train, 1, 2) -
+                            self.mean) / self.std
+            self.X_train = np.swapaxes(self.X_train, 1, 2)
+        elif norm == 'izscore':
+            self.mean = np.mean(self.X_train, axis=2, keepdims=True)
+            self.std = np.std(self.X_train, axis=2, keepdims=True)
+            self.X_train = (self.X_train - self.mean) / (self.std + 1e-8)
+        elif norm == 'iminmax':
+            self.mean = np.min(self.X_train, axis=2, keepdims=True)
+            self.std = np.max(self.X_train, axis=2,
+                                keepdims=True) - np.min(
+                                    self.X_train, axis=2, keepdims=True)
+            self.X_train = (self.X_train - self.mean) / (self.std + 1e-8)
+
 
     def __init__(
         self,
@@ -30,6 +63,7 @@ class ECGDataset(Dataset):
         dataset='train',
         nsamples=1000,
         norm=None,
+        norm_all=False,
         lookback=1,
         horizon=1,
         stride=1,
@@ -41,56 +75,23 @@ class ECGDataset(Dataset):
         self.past = lookback
         self.stride = stride
         self.channel = channel
+        self.norm = norm
         print(f"Loading data from {self.dir}")
         datafiles = sorted(glob(f"{self.dir}/*_{dataset}_*.npz"))
         if nsamples is not None:
             data = np.load(datafiles[0])['arr_0'][:nsamples]
         else:
             data = np.load(datafiles[0])['arr_0']
-
         try:
             self.X_train = data
         except:
             raise ValueError("Data files must contain a 'data' array")
 
-        # print(f"_Input shape: {self.data.shape}")
-        self.weights = None
         self.max_val = np.max(self.X_train)
         self.min_val = np.min(self.X_train)
 
-        if norm is not None:
-            if norm == 'minmax':
-                self.mean = np.min(self.X_train, axis=(0, 2))
-                self.std = np.max(self.X_train, axis=(0, 2)) - np.min(
-                    self.X_train, axis=(0, 2))
-                self.X_train = (np.swapaxes(self.X_train, 1, 2) -
-                                self.mean) / self.std
-                self.X_train = np.swapaxes(self.X_train, 1, 2)
-            elif norm == 'robust':
-                q1 = np.quantile(self.X_train, 0.01, axis=(0, 2))
-                q3 = np.quantile(self.X_train, 0.99, axis=(0, 2))
-                self.mean = q1
-                self.std = q3 - q1
-                self.X_train = (np.swapaxes(self.X_train, 1, 2) -
-                                self.mean) / self.std
-                self.X_train = np.swapaxes(self.X_train, 1, 2)
-            elif norm == 'zscore':
-                self.mean = np.mean(self.X_train, axis=(0, 2))
-                self.std = np.std(self.X_train, axis=(0, 2))
-                self.X_train = (np.swapaxes(self.X_train, 1, 2) -
-                                self.mean) / self.std
-                self.X_train = np.swapaxes(self.X_train, 1, 2)
-            elif norm == 'izscore':
-                self.mean = np.mean(self.X_train, axis=2, keepdims=True)
-                self.std = np.std(self.X_train, axis=2, keepdims=True)
-                self.X_train = (self.X_train - self.mean) / (self.std + 1e-8)
-            elif norm == 'iminmax':
-                self.mean = np.min(self.X_train, axis=2, keepdims=True)
-                self.std = np.max(self.X_train, axis=2,
-                                  keepdims=True) - np.min(
-                                      self.X_train, axis=2, keepdims=True)
-                self.X_train = (self.X_train - self.mean) / (self.std + 1e-8)
-
+        if norm is not None and norm_all:
+            self.normalize(self.X_train, norm)
         window_size = self.past + self.horizon
         n_samples = (self.X_train.shape[2] - window_size) // self.stride + 1
         self.X_train = np.array([
@@ -99,6 +100,8 @@ class ECGDataset(Dataset):
         ])
         self.y_train = np.reshape(self.X_train[:, :, channel, -self.horizon:], (self.X_train.shape[0] * self.X_train.shape[1], self.horizon))
         self.X_train = np.reshape(self.X_train[:, :, :, :self.past], (self.X_train.shape[0] * self.X_train.shape[1], self.X_train.shape[2], self.past))
+        if norm is not None and not norm_all:
+            self.normalize(self.X_train, norm)
 
         print(f'{self.dataset}')
         print(f'X_train shape is {self.X_train.shape}')
