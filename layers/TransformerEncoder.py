@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 from .MultiHeadedAttention import MultiHeadAttention
 from typing import Optional
-from .SwiGLU import PackedSwiGLUFFN
+from .SwiGLU import PackedSwiGLUFFN, SwiGLUFFN
 from torch.nn import RMSNorm
 
 
@@ -77,28 +77,26 @@ class TransformerEncoderLayer(nn.Module):
                                            1,
                                            device=device,
                                            dtype=dtype)
+            # self.linear1 = SwiGLUFFN(d_model,
+            #                          dim_feedforward,
+            #                          1,
+            #                          device=device,
+            #                          dtype=dtype)
             self.linear2 = nn.Linear(dim_feedforward,
                                      d_model,
                                      bias=bias,
                                      **factory_kwargs)
         self.rmsnorm = rmsnorm
         if rmsnorm:
-            self.norm1 = RMSNorm(d_model,
-                                 eps=layer_norm_eps,
-                                 bias=bias,
-                                 **factory_kwargs)
-            self.norm2 = RMSNorm(d_model,
-                                 eps=layer_norm_eps,
-                                 bias=bias,
-                                 **factory_kwargs)
+            self.norm1 = RMSNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+            self.norm2 = RMSNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
 
     def _sa_block(self, x, attn_mask, is_causal):
         x = self.self_attn(x, x, x, is_causal=is_causal)
         return self.dropout1(x)
 
     def _ff_block(self, x):
-        x = self.linear2(self.dropout(self.activation(self.linear1(x))))
-        return self.dropout2(x)
+        return self.dropout2(self.linear2(self.dropout(self.activation(self.linear1(x)))))
 
     def forward(self, src, src_mask=None, is_causal=False):
         '''

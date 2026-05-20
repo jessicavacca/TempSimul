@@ -9,7 +9,7 @@ padding mask is removed.
 import torch
 import torch.nn as nn
 from typing import Optional
-from torch import Tensor, Module
+from torch import Tensor
 import copy
 
 from .TransformerDecoder import TransformerDecoderLayer
@@ -50,7 +50,7 @@ class TransformerDecoder(nn.Module):
         self,
         decoder_layer: "TransformerDecoderLayer",
         num_layers: int,
-        norm: Optional[Module] = None,
+        norm: Optional[nn.Module] = None,
     ):
         super().__init__()
         self.layers = _get_clones(decoder_layer, num_layers)

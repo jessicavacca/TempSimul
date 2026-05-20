@@ -1,5 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
+import torch
 
 class SwiGLUFFN(nn.Module):
     def __init__(
@@ -13,21 +14,21 @@ class SwiGLUFFN(nn.Module):
     ):
         factory_kwargs = {"device": device, "dtype": dtype}
         super().__init__()
-        hidden_dim = int(2 * hidden_dim / 3)
+        swiglu_hidden_dim = int(2 * hidden_dim / 3)
         # custom dim factor multiplier
         if ffn_dim_multiplier is not None:
-            hidden_dim = int(ffn_dim_multiplier * hidden_dim)
-        hidden_dim = multiple_of * ((hidden_dim + multiple_of - 1) // multiple_of)
-
-        self.w1 = nn.Linear(dim, hidden_dim, bias=False, **factory_kwargs)
-        self.w2 = nn.Linear(hidden_dim, dim, bias=False, **factory_kwargs)
-        self.w3 = nn.Linear(dim, hidden_dim, bias=False, **factory_kwargs)
+            swiglu_hidden_dim = int(ffn_dim_multiplier * swiglu_hidden_dim)
+        swiglu_hidden_dim = multiple_of * ((swiglu_hidden_dim + multiple_of - 1) // multiple_of)
+        self.w1 = nn.Linear(dim, swiglu_hidden_dim, bias=False, **factory_kwargs)
+        self.w2 = nn.Linear(swiglu_hidden_dim, hidden_dim, bias=False, **factory_kwargs)
+        self.w3 = nn.Linear(dim, swiglu_hidden_dim, bias=False, **factory_kwargs)
 
     def forward(self, x):
         return self.w2(F.silu(self.w1(x)) * self.w3(x))
 
 
 class PackedSwiGLUFFN(nn.Module):
+
     def __init__(
         self,
         dim,
@@ -39,14 +40,15 @@ class PackedSwiGLUFFN(nn.Module):
     ):
         factory_kwargs = {"device": device, "dtype": dtype}
         super().__init__()
-        hidden_dim = int(2 * hidden_dim / 3)
+        swiglu_hidden_dim = int(2 * hidden_dim / 3)
         # custom dim factor multiplier
         if ffn_dim_multiplier is not None:
-            hidden_dim = int(ffn_dim_multiplier * hidden_dim)
-        hidden_dim = multiple_of * ((hidden_dim + multiple_of - 1) // multiple_of)
+            swiglu_hidden_dim = int(ffn_dim_multiplier * swiglu_hidden_dim)
+        swiglu_hidden_dim = multiple_of * (
+            (swiglu_hidden_dim + multiple_of - 1) // multiple_of)
 
-        self.w13 = nn.Linear(dim, 2 * hidden_dim, bias=False, **factory_kwargs)
-        self.w2 = nn.Linear(hidden_dim, dim, bias=False, **factory_kwargs)
+        self.w13 = nn.Linear(dim, 2 * swiglu_hidden_dim, bias=False, **factory_kwargs)
+        self.w2 = nn.Linear(swiglu_hidden_dim, hidden_dim, bias=False, **factory_kwargs)
 
     def forward(self, x):
         x1, x3 = torch.chunk(self.w13(x), 2, dim=-1)
