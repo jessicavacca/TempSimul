@@ -1,8 +1,27 @@
 from torch import Tensor, nn
-from lib.layers.Encodings import positional_encoding
+from lib.layers.Encodings import sinusoidal_positional_encoding
 from lib.layers.Transformer import TransformerEncoder
 from lib.layers.TransformerEncoder import TransformerEncoderLayer
 import torch
+
+
+def PatchTransformerForecast_exp_name(config):
+    """Generates a name for the experiment based on the configuration"""
+    name = "PatchTransformerForecast"
+    name += f"_l{config['model']['params']['lookback']}"
+    name += f"_h{config['model']['params']['horizon']}"
+    name += f"_d{config['model']['params']['input_dim']}"
+    name += f"_td{config['model']['params']['target_dim']}"
+    name += f"_n{config['model']['params']['num_layers']}"
+    name += f"_p{config['model']['params']['patch_len']}"
+    name += f"_d{config['model']['params']['d_model']}"
+    name += f"_h{config['model']['params']['n_heads']}"
+    name += f"_df{config['model']['params']['dim_feedforward']}"
+    name += f"_dr{config['model']['params']['dropout']}"
+    if 'pos_encodings' in config['model']['params']:
+        name += f"_p{config['model']['params']['pos_encodings']}"
+    name += f"_cs{config['model']['params']['causal']}"
+    return name
 
 
 class PatchTransformerForecast(nn.Module):
@@ -24,6 +43,7 @@ class PatchTransformerForecast(nn.Module):
         n_heads: int = 8,
         dim_feedforward: int = 256,
         dropout: float = 0.1,
+        positional_encodings: str = 'sinusoidal',
         causal: bool = True,
     ) -> None:
         super().__init__()
@@ -47,6 +67,13 @@ class PatchTransformerForecast(nn.Module):
         self.d_model = d_model
         self.causal = causal
 
+        if positional_encodings == 'sinusoidal':
+            self.positional_encoding = sinusoidal_positional_encoding(
+                self.n_patches,
+                d_model,
+                device='cuda' if torch.cuda.is_available() else 'cpu')
+        else:
+            self.positional_encoding = None
         self.patch_projection = nn.Conv1d(patch_len * input_dim,
                                           d_model,
                                           kernel_size=1)
@@ -78,8 +105,8 @@ class PatchTransformerForecast(nn.Module):
         x = x.permute(0, 2, 1)  # (batch_size, input_dim, lookback)
 
         # Add positional encoding
-        pe = positional_encoding(self.n_patches, self.d_model, device=x.device)
-        x = x + pe
+        if self.positional_encoding is not None:
+            x += self.positional_encoding
 
         # Encode
         if self.causal:
@@ -95,6 +122,31 @@ class PatchTransformerForecast(nn.Module):
 
         return output
 
+
+def PatchTransformerForecast2_exp_name(config):
+    """Generates a name for the experiment based on the configuration"""
+    name = "PatchTransformerForecast2"
+    name += f"_l{config['model']['params']['lookback']}"
+    name += f"_h{config['model']['params']['horizon']}"
+    name += f"_d{config['model']['params']['input_dim']}"
+    name += f"_td{config['model']['params']['target_dim']}"
+    name += f"_n{config['model']['params']['num_layers']}"
+    name += f"_p{config['model']['params']['patch_len']}"
+    name += f"_d{config['model']['params']['d_model']}"
+    name += f"_h{config['model']['params']['n_heads']}"
+    name += f"_df{config['model']['params']['dim_feedforward']}"
+    name += f"_nf{config['model']['params']['norm_first']}"
+    name += f"_sg{config['model']['params']['swiglu']}"
+    name += f"_rn{config['model']['params']['rmsnorm']}"
+    name += f"_dr{config['model']['params']['dropout']}"
+    name += f"_tn{config['model']['params']['trans_norm']}"
+    # name += f"_lne{config['model']['params']['layer_norm_eps']}"
+    name += f"_b{config['model']['params']['bias']}"
+    if 'pos_encodings' in config['model']['params']:
+        name += f"_p{config['model']['params']['pos_encodings']}"
+    name += f"_cs{config['model']['params']['causal']}"
+
+    return name
 
 class PatchTransformerForecast2(nn.Module):
     """ A transformer-based model for forecasting that uses patching to handle long lookback windows.
@@ -118,10 +170,11 @@ class PatchTransformerForecast2(nn.Module):
         swiglu: bool = False,
         rmsnorm: bool = False,
         dropout: float = 0.1,
-        trans_norm=False,
-        layer_norm_eps=1e-5,
-        bias=True,
-        device=None,
+        trans_norm: bool = False,
+        layer_norm_eps: float = 1e-5,
+        bias: bool = True,
+        device: bool =None,
+        positional_encodings: str = 'sinusoidal',
         causal: bool = True,
     ) -> None:
         super().__init__()
@@ -144,6 +197,14 @@ class PatchTransformerForecast2(nn.Module):
         self.n_patches = lookback // patch_len
         self.d_model = d_model
         self.causal = causal
+
+        if positional_encodings == 'sinusoidal':
+            self.positional_encoding = sinusoidal_positional_encoding(
+                self.n_patches,
+                d_model,
+                device='cuda' if torch.cuda.is_available() else 'cpu')
+        else:
+            self.positional_encoding = None
 
         self.patch_projection = nn.Conv1d(patch_len * input_dim,
                                           d_model,
@@ -184,8 +245,8 @@ class PatchTransformerForecast2(nn.Module):
         x = x.permute(0, 2, 1)  # (batch_size, input_dim, lookback)
 
         # Add positional encoding
-        pe = positional_encoding(self.n_patches, self.d_model, device=x.device)
-        x = x + pe
+        if self.positional_encoding is not None:
+            x += self.positional_encoding
 
         # Encode
         if self.causal:

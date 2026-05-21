@@ -14,5 +14,6 @@ test/*
 
 Preprocess/PTBXL/*.npz
 
-Forecast/PatchForecast_cp.py
+lib/Forecast/PatchForecast_cp.py
 main.old.py
+lib/paths.py

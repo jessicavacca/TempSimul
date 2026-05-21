@@ -1,0 +1,19 @@
+modeltype: PatchransformerForecast2
+class: lib.Forecast.PatchransformerForecast.PatchransformerForecast2
+params:
+  lookback: 100
+  horizon: 25
+  input_dim: 8
+  target_dim: 1
+  num_layers: 6
+  patch_len: 10
+  d_model: 16
+  n_heads: 2
+  dim_feedforward: 256
+  norm_first: true
+  swiglu: true
+  rmsnorm: true
+  dropout: 0.1
+  trans_norm: true
+  positional_encodings: sinusoidal
+  causal: true

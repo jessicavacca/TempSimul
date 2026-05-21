@@ -1,6 +1,25 @@
 import torch
 from torch import Tensor, nn
-from lib.layers.Encodings import positional_encoding
+from lib.layers.Encodings import sinusoidal_positional_encoding
+
+
+def SimpleTransformerForecast_exp_name(config):
+    """Generates a name for the experiment based on the configuration"""
+    name = "SimpleTransformerForecast"
+    name += f"_l{config['model']['params']['lookback']}"
+    name += f"_h{config['model']['params']['horizon']}"
+    name += f"_d{config['model']['params']['input_dim']}"
+    name += f"_td{config['model']['params']['target_dim']}"
+    name += f"_nl{config['model']['params']['num_layers']}"
+    name += f"_d{config['model']['params']['d_model']}"
+    name += f"_h{config['model']['params']['n_heads']}"
+    name += f"_df{config['model']['params']['dim_feedforward']}"
+    name += f"_dr{config['model']['params']['dropout']}"
+    name += f"_c{config['model']['params']['causal']}"
+    if 'pos_encodings' in config['model']['params']:
+        name += f"_p{config['model']['params']['pos_encodings']}"
+
+    return name
 
 
 class SimpleTransformerForecast(nn.Module):
@@ -21,6 +40,7 @@ class SimpleTransformerForecast(nn.Module):
         n_heads: int = 8,
         dim_feedforward: int = 256,
         dropout: float = 0.1,
+        positional_encodings: str = 'sinusoidal',
         causal: bool = True,
     ) -> None:
         super().__init__()
@@ -51,10 +71,13 @@ class SimpleTransformerForecast(nn.Module):
 
         self.output_projection = nn.Linear(d_model * lookback, horizon)
 
-        self.positional_encoding = positional_encoding(
-            lookback,
-            d_model,
-            device='cuda' if torch.cuda.is_available() else 'cpu')
+        if positional_encodings == 'sinusoidal':
+            self.positional_encoding = sinusoidal_positional_encoding(
+                lookback,
+                d_model,
+                device='cuda' if torch.cuda.is_available() else 'cpu')
+        else:
+            self.positional_encoding = None
 
     def _generate_causal_mask(self, length: int,
                               device: torch.device) -> Tensor:
@@ -74,7 +97,8 @@ class SimpleTransformerForecast(nn.Module):
         x = self.input_projection(x)  # (batch_size, lookback, d_model)
 
         # Add positional encoding
-        x += self.positional_encoding
+        if self.positional_encoding is not None:
+            x += self.positional_encoding
 
         # Pass through transformer encoder
         if self.causal:

@@ -3,8 +3,11 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+
+
 # Function to train the model
-def regression_train_loop(model,
+def regression_train_loop(accelerator,
+                          model,
                           train,
                           val,
                           optimizer,
@@ -58,7 +61,7 @@ def regression_train_loop(model,
             loss = lossf(y, outputs)
 
             # Make the backward pass
-            loss.backward()
+            accelerator.backward(loss)
             optimizer.step()
 
         if scheduler is not None:

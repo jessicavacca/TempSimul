@@ -3,7 +3,7 @@ from torch import Tensor
 import math
 
 
-def positional_encoding(length: int, d_model: int,
+def sinusoidal_positional_encoding(length: int, d_model: int,
                             device: torch.device) -> Tensor:
     """Sinusoidal positional encoding with shape (1, length, d_model)."""
     position = torch.arange(length, device=device,

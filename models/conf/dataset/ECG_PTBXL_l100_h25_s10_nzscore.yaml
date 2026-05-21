@@ -1,0 +1,37 @@
+name: ECG_PTBXL
+train:
+  class: lib.Dataloaders.ECGDataset.ECGDataset
+  params:
+    dir: /PTBXL
+    dataset: train
+    nsamples: 2500
+    norm: zscore
+    norm_all: false
+    lookback: 100
+    horizon: 25
+    stride: 10
+    channel: 0
+test:
+  class: lib.Dataloaders.ECGDataset.ECGDataset
+  params:
+    dir: /PTBXL
+    dataset: test
+    nsamples: 200
+    norm: zscore
+    norm_all: false
+    lookback: 100
+    horizon: 25
+    stride: 10
+    channel: 0
+val:
+  class: lib.Dataloaders.ECGDataset.ECGDataset
+  params:
+    dir: /PTBXL
+    dataset: validation
+    nsamples: 200
+    norm: zscore
+    norm_all: false
+    lookback: 100
+    horizon: 25
+    stride: 10
+    channel: 0
