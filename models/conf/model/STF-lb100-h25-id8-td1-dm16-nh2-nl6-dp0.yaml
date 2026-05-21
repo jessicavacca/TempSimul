@@ -1,0 +1,11 @@
+modeltype: SimpleTransformerForecast
+class: lib.Forecast.SimpleTransformerForecast.SimpleTransformerForecast
+params:
+  lookback: 100
+  horizon: 25
+  input_dim: 8
+  target_dim: 1
+  d_model: 16
+  n_heads: 2
+  num_layers: 6
+  dropout: 0

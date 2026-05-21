@@ -1,8 +1,6 @@
 import torch
 from torch import Tensor, nn
-from Forecast.Encodings import positional_encoding
-
-
+from lib.layers.Encodings import positional_encoding
 
 
 class SimpleTransformerForecast(nn.Module):

@@ -1,7 +1,7 @@
 from torch import Tensor, nn
-from Forecast.Encodings import positional_encoding
-from layers.Transformer import TransformerEncoder
-from layers.TransformerEncoder import TransformerEncoderLayer
+from lib.layers.Encodings import positional_encoding
+from lib.layers.Transformer import TransformerEncoder
+from lib.layers.TransformerEncoder import TransformerEncoderLayer
 import torch
 
 

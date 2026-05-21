@@ -1,0 +1,18 @@
+exp_dir: /ecgvae/Models/TimeDiffusion/
+local: false
+projectconf:
+  total_limit: 2
+accelerator:
+  gradient_accumulation_steps: 1
+  mixed_precision: 'no'
+  log_with: wandb
+time: 12
+
+defaults:
+  - dataloader: batch128
+  - train: normal50000
+  - optimizer: adamw-lr4
+  - samples: normal
+  - loss: L2
+  - lr_scheduler: cosine-w100
+  - _self_
