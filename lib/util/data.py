@@ -1,4 +1,4 @@
-from ai4ha.util import instantiate_from_config
+from lib.util.misc import instantiate_from_config
 from torch.utils.data import ConcatDataset, DataLoader
 from torch.utils.data import WeightedRandomSampler, random_split
 

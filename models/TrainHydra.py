@@ -1,9 +1,9 @@
 import hydra
 from omegaconf import DictConfig, OmegaConf, SCMode
 from accelerate.logging import get_logger
-from ai4ha.util import experiment_name_regressor
-from ai4ha.util.config import adapt_hydra_optuna_sweep
-from ai4ha.Train import regression_loop
+from lib.util.exp_names import experiment_name_regression
+from lib.util.misc import adapt_hydra_optuna_sweep, fix_paths
+from lib.Train.Regression import regression_loop
 
 
 logger = get_logger(__name__, log_level="INFO")
@@ -16,7 +16,7 @@ def RegressorTrain(cfg: DictConfig) -> None:
                                  structured_config_mode=SCMode.DICT_CONFIG)
     cfg = fix_paths(cfg, cfg['local'])
     cfg = adapt_hydra_optuna_sweep(cfg)
-    cfg['name'] = experiment_name_regressor(cfg)
+    cfg['name'] = experiment_name_regression(cfg)
     return regression_loop(cfg, logger)
 
 

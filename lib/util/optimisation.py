@@ -20,12 +20,6 @@ from enum import Enum
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LambdaLR
 
-from .utils import logging
-
-
-logger = logging.get_logger(__name__)
-
-
 class SchedulerType(Enum):
     LINEAR = "linear"
     COSINE = "cosine"

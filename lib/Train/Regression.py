@@ -4,15 +4,14 @@ import torch
 
 from lib.Forecast.SimpleTransformerForecast import SimpleTransformerForecast
 from lib.Forecast.PatchTransformerForecast import PatchTransformerForecast, PatchTransformerForecast2
-from lib.util.misc import initialize_dirs
-from lib.util.config import save_config
+from lib.util.misc import initialize_dirs, save_config
 from lib.util.data import load_dataset
-from lib.util.trainloop import get_optimizer, get_scheduler
+from lib.util.train import get_optimizer, get_scheduler
 from lib.util.textlog import textlog
 from lib.util.validation import dataset_loss
 from lib.util.trainloop import regression_train_loop
 
-from accelerate import Accelerator, DistributedDataParallelKwargs, ProjectConfiguration
+from accelerate import Accelerator, DistributedDataParallelKwargs #, ProjectConfiguration
 
 
 
@@ -25,9 +24,9 @@ def regression_loop(config, logger):
     accparams = config["accelerator"].copy()
     accparams["project_dir"] = BASE_DIR
 
-    if "projectconf" in config:
-        accparams["project_config"] = ProjectConfiguration(
-            **config["projectconf"])
+    # if "projectconf" in config:
+    #     accparams["project_config"] = ProjectConfiguration(
+    #         **config["projectconf"])
 
     ddp_kwargs = DistributedDataParallelKwargs(
         find_unused_parameters=accparams["gradient_accumulation_steps"] > 1)

@@ -114,3 +114,24 @@ def fix_paths(config, local=False):
         fix_dataset_paths('dataset', config)
 
     return config
+    
+
+def adapt_hydra_optuna_sweep(config):
+    """_summary_
+
+     Takes the parameters of the hydra optuna sampling and copies them to 
+     the corresponding parameters of the training configuration
+
+     Parameters have a name in the form "sectionname-sectionname-parametername" to 
+     match the keys of the configuration
+    """
+    for key in config:
+        if '-' in key:
+            params = key.split("-")
+            if len(params) == 2:
+                config[params[0]][params[1]] = config[key]
+            elif len(params) == 3:
+                config[params[0]][params[1]][params[2]] = config[key]
+            else:
+                print("Error: key not recognized")
+    return config
