@@ -1,5 +1,5 @@
-modeltype: PatchransformerForecast2
-class: lib.Forecast.PatchransformerForecast.PatchransformerForecast2
+modeltype: PatchTransformerForecast2
+class: lib.Forecast.PatchTransformerForecast.PatchTransformerForecast2
 params:
   lookback: 100
   horizon: 25

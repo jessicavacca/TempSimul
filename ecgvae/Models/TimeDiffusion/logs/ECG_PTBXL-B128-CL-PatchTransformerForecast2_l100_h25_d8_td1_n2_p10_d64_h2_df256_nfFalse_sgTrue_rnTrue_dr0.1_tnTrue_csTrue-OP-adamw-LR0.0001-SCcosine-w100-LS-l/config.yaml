@@ -1,0 +1,93 @@
+dataloader:
+  batch_size: 128
+  num_workers: 8
+optimizer:
+  opt: adamw
+  beta1: 0.95
+  beta2: 0.999
+  weight_decay: 1.0e-06
+  epsilon: 1.0e-08
+  learning_rate: 0.0001
+loss:
+  loss: L2
+lr_scheduler:
+  type: cosine
+  lr_warmup_steps: 100
+exp_dir: /home/bejar/code/TempSimul/ecgvae/Models/TimeDiffusion/
+local: true
+projectconf:
+  total_limit: 2
+accelerator:
+  gradient_accumulation_steps: 1
+  mixed_precision: 'no'
+  log_with: wandb
+time: 12
+train:
+  num_epochs: 100
+model-params-num_layers: 2
+model-params-d_model: 64
+model-params-num_heads: 4
+model-params-patch_len: 10
+model-params-norm_first: false
+model-params-swiglu: true
+model-params-rmsnorm: true
+model:
+  modeltype: PatchTransformerForecast2
+  class: lib.Forecast.PatchTransformerForecast.PatchTransformerForecast2
+  params:
+    lookback: 100
+    horizon: 25
+    input_dim: 8
+    target_dim: 1
+    num_layers: 2
+    patch_len: 10
+    d_model: 64
+    n_heads: 2
+    dim_feedforward: 256
+    norm_first: false
+    swiglu: true
+    rmsnorm: true
+    dropout: 0.1
+    trans_norm: true
+    positional_encodings: sinusoidal
+    causal: true
+    num_heads: 4
+dataset:
+  name: ECG_PTBXL
+  train:
+    class: lib.Dataloaders.ECGDataset.ECGDataset
+    params:
+      dir: /home/bejar/code/TempSimul/Preprocess/PTBXL
+      dataset: train
+      nsamples: 2500
+      norm: zscore
+      norm_all: false
+      lookback: 100
+      horizon: 25
+      stride: 10
+      channel: 0
+  test:
+    class: lib.Dataloaders.ECGDataset.ECGDataset
+    params:
+      dir: /home/bejar/code/TempSimul/Preprocess/PTBXL
+      dataset: test
+      nsamples: 200
+      norm: zscore
+      norm_all: false
+      lookback: 100
+      horizon: 25
+      stride: 10
+      channel: 0
+  val:
+    class: lib.Dataloaders.ECGDataset.ECGDataset
+    params:
+      dir: /home/bejar/code/TempSimul/Preprocess/PTBXL
+      dataset: validation
+      nsamples: 200
+      norm: zscore
+      norm_all: false
+      lookback: 100
+      horizon: 25
+      stride: 10
+      channel: 0
+name: ECG_PTBXL-B128-CL-PatchTransformerForecast2_l100_h25_d8_td1_n2_p10_d64_h2_df256_nfFalse_sgTrue_rnTrue_dr0.1_tnTrue_csTrue-OP-adamw-LR0.0001-SCcosine-w100-LS-l

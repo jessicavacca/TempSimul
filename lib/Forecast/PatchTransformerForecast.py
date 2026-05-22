@@ -141,7 +141,8 @@ def PatchTransformerForecast2_exp_name(config):
     name += f"_dr{config['model']['params']['dropout']}"
     name += f"_tn{config['model']['params']['trans_norm']}"
     # name += f"_lne{config['model']['params']['layer_norm_eps']}"
-    name += f"_b{config['model']['params']['bias']}"
+    if 'bias' in config['model']['params']:
+        name += f"_b{config['model']['params']['bias']}"
     if 'pos_encodings' in config['model']['params']:
         name += f"_p{config['model']['params']['pos_encodings']}"
     name += f"_cs{config['model']['params']['causal']}"

@@ -56,11 +56,11 @@ def regression_loop(config, logger):
     # tlog = textlog(f"{BASE_DIR}/logs/losslog.csv",
     #                ["CEloss", "ACCTrain", "ACCVal"])
 
-    if config["model"]["modeltype"] == "SimpleTransformer":
+    if config["model"]["modeltype"] == "SimpleTransformerForecast":
         model = SimpleTransformerForecast(**config["model"]["params"])
-    elif config["model"]["modeltype"] == "PatchTransformer":
+    elif config["model"]["modeltype"] == "PatchTransformerForecast":
         model = PatchTransformerForecast(**config["model"]["params"])
-    elif config["model"]["modeltype"] == "PatchTransformer2":
+    elif config["model"]["modeltype"] == "PatchTransformerForecast2":
         model = PatchTransformerForecast2(**config["model"]["params"])
     else:
         raise ValueError(
@@ -118,9 +118,12 @@ def regression_loop(config, logger):
     )
 
     logger.info("*** Validation Results ***")
-    logger.info(f"Validation {config['loss']['loss']} = {dataset_loss(model, dataloaders['val'])}")
+    val_loss = dataset_loss(model, dataloaders['val'])
+    logger.info(
+        f"Validation {config['loss']['loss']} = {val_loss}"
+    )
 
-    test_acc = dataset_loss(model, dataloaders['test'])
-    logger.info(f"Test {config['loss']['loss']} = {test_acc}")
+    test_loss = dataset_loss(model, dataloaders['test'])
+    logger.info(f"Test {config['loss']['loss']} = {test_loss}")
 
-    return test_acc
+    return val_loss

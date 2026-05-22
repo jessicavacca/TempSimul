@@ -12,8 +12,8 @@ def regression_train_loop(accelerator,
                           val,
                           optimizer,
                           scheduler=None,
-                          patience=5,
                           epochs=100,
+                          patience=5,
                           lossf=F.mse_loss,
                           tqdm_on=True):
     """_Training loop for the model_
