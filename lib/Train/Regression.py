@@ -119,6 +119,12 @@ def regression_loop(config, logger):
         tqdm_on=accelerator.is_main_process,
     )
 
+    logger.info("***** Training complete *****")
+    logger.info(f"Best validation loss: {min(train_history['val'])}")
+    logger.info(
+        f"Best epoch: {train_history['val'].index(min(train_history['val']))}")
+    logger.info(f"Final epoch: {len(train_history['val'])}")
+
     logger.info("*** Validation Results ***")
     val_loss = dataset_loss(model, dataloaders['val'])
     logger.info(f"Validation {config['loss']['loss']} = {val_loss}")
