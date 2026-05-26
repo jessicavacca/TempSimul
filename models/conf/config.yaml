@@ -1,5 +1,5 @@
-exp_dir: /ecgvae/Models/TimeDiffusion/
-local: false
+exp_dir: /models/
+local: true
 projectconf:
   total_limit: 2
 accelerator:
@@ -9,7 +9,7 @@ accelerator:
 time: 12
 
 defaults:
-  - dataloader: batch128
+  - dataloader: batch2048
   - optimizer: adamw-lr4
   - loss: L2
   - lr_scheduler: cos-w100
@@ -18,8 +18,8 @@ defaults:
   - _self_
 
 train:
-  num_epochs: 100
-  patience: 10
+  num_epochs: 1000
+  patience: 100
 
 hydra:
   sweeper:
@@ -30,13 +30,34 @@ hydra:
     storage: null
     n_trials: 15
     n_jobs: 1
-    
+    search_space:
+      model-params-num_layers: 
+        type: categorical
+        choices: [1, 2, 3]
+      model-params-d_model:
+        type: categorical
+        choices: [16, 32, 64]
+      model-params-n_heads:
+        type: categorical
+        choices: [2, 4]
+      model-params-patch_len:
+        type: categorical
+        choices: [5, 10]
+      model-params-norm_first:
+        type: categorical
+        choices: [true, false]
+      model-params-swiglu:
+        type: categorical
+        choices: [true, false]
+      model-params-rmsnorm:
+        type: categorical
+        choices: [true, false]
 
 
-model-params-num_layers: 2
-model-params-d_model: 64 
-model-params-n_heads: 4
-model-params-patch_len: 10
+model-params-num_layers: 1
+model-params-d_model: 16 
+model-params-n_heads: 2
+model-params-patch_len: 5
 model-params-norm_first: false
-model-params-swiglu: true
-model-params-rmsnorm: true
+model-params-swiglu: false
+model-params-rmsnorm: false

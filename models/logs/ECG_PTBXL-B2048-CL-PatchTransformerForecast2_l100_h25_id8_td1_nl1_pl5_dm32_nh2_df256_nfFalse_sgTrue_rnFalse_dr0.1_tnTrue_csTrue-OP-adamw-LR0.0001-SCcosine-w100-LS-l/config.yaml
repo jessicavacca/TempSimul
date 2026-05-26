@@ -1,6 +1,6 @@
 dataloader:
-  batch_size: 128
-  num_workers: 8
+  batch_size: 2048
+  num_workers: 16
 optimizer:
   opt: adamw
   beta1: 0.95
@@ -13,7 +13,7 @@ loss:
 lr_scheduler:
   type: cosine
   lr_warmup_steps: 100
-exp_dir: /home/bejar/code/TempSimul/ecgvae/Models/TimeDiffusion/
+exp_dir: /home/bejar/code/TempSimul/models/
 local: true
 projectconf:
   total_limit: 2
@@ -23,14 +23,15 @@ accelerator:
   log_with: wandb
 time: 12
 train:
-  num_epochs: 100
-model-params-num_layers: 2
-model-params-d_model: 64
-model-params-num_heads: 4
-model-params-patch_len: 10
+  num_epochs: 1000
+  patience: 100
+model-params-num_layers: 1
+model-params-d_model: 32
+model-params-n_heads: 2
+model-params-patch_len: 5
 model-params-norm_first: false
 model-params-swiglu: true
-model-params-rmsnorm: true
+model-params-rmsnorm: false
 model:
   modeltype: PatchTransformerForecast2
   class: lib.Forecast.PatchTransformerForecast.PatchTransformerForecast2
@@ -39,19 +40,18 @@ model:
     horizon: 25
     input_dim: 8
     target_dim: 1
-    num_layers: 2
-    patch_len: 10
-    d_model: 64
+    num_layers: 1
+    patch_len: 5
+    d_model: 32
     n_heads: 2
     dim_feedforward: 256
     norm_first: false
     swiglu: true
-    rmsnorm: true
+    rmsnorm: false
     dropout: 0.1
     trans_norm: true
     positional_encodings: sinusoidal
     causal: true
-    num_heads: 4
 dataset:
   name: ECG_PTBXL
   train:
@@ -90,4 +90,4 @@ dataset:
       horizon: 25
       stride: 10
       channel: 0
-name: ECG_PTBXL-B128-CL-PatchTransformerForecast2_l100_h25_d8_td1_n2_p10_d64_h2_df256_nfFalse_sgTrue_rnTrue_dr0.1_tnTrue_csTrue-OP-adamw-LR0.0001-SCcosine-w100-LS-l
+name: ECG_PTBXL-B2048-CL-PatchTransformerForecast2_l100_h25_id8_td1_nl1_pl5_dm32_nh2_df256_nfFalse_sgTrue_rnFalse_dr0.1_tnTrue_csTrue-OP-adamw-LR0.0001-SCcosine-w100-LS-l

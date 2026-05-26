@@ -53,6 +53,8 @@ class SimpleTransformerForecast(nn.Module):
         self.input_dim = input_dim
         self.target_dim = target_dim
         self.num_layers = num_layers
+        self.n_heads = n_heads
+        self.dim_feedforward = dim_feedforward
         self.horizon = horizon
         self.lookback = lookback
         self.d_model = d_model
@@ -83,6 +85,30 @@ class SimpleTransformerForecast(nn.Module):
                               device: torch.device) -> Tensor:
         return nn.Transformer.generate_square_subsequent_mask(length,
                                                               device=device)
+
+    def log_parameters(self, logger):
+        logger.info(f"Model parameters:")
+        logger.info(f"  Lookback: {self.lookback}")
+        logger.info(f"  Horizon: {self.horizon}")
+        logger.info(f"  Input dim: {self.input_dim}")
+        logger.info(f"  Target dim: {self.target_dim}")
+        logger.info(f"  Num layers: {self.num_layers}")
+        logger.info(f"  D model: {self.d_model}")
+        logger.info(f"  N heads: {self.n_heads}")
+        logger.info(f"  Dim feedforward: {self.dim_feedforward}")
+        logger.info(
+            f"  N heads: {self.transformer_encoder.layers[0].self_attn.num_heads}"
+        )
+        logger.info(
+            f"  Dim feedforward: {self.transformer_encoder.layers[0].linear1.out_features}"
+        )
+        logger.info(
+            f"  Dropout: {self.transformer_encoder.layers[0].dropout.p}")
+        logger.info(f"  Causal: {self.causal}")
+        if self.positional_encoding is not None:
+            logger.info(f"  Positional encodings: sinusoidal")
+        else:
+            logger.info(f"  Positional encodings: none")
 
     def forward(self, x: Tensor) -> Tensor:
         """

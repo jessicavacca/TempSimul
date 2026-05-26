@@ -66,6 +66,8 @@ def regression_loop(config, logger):
         raise ValueError(
             f"Unsupported model type: {config['model']['modeltype']}")
 
+    model.log_parameters(logger)
+
     # Initialize the optimizer
     optimizer = get_optimizer(model, accelerator, config)
 
@@ -119,9 +121,7 @@ def regression_loop(config, logger):
 
     logger.info("*** Validation Results ***")
     val_loss = dataset_loss(model, dataloaders['val'])
-    logger.info(
-        f"Validation {config['loss']['loss']} = {val_loss}"
-    )
+    logger.info(f"Validation {config['loss']['loss']} = {val_loss}")
 
     test_loss = dataset_loss(model, dataloaders['test'])
     logger.info(f"Test {config['loss']['loss']} = {test_loss}")

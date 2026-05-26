@@ -60,6 +60,8 @@ class PatchTransformerForecast(nn.Module):
         self.input_dim = input_dim
         self.target_dim = target_dim
         self.num_layers = num_layers
+        self.n_heads = n_heads
+        self.dim_feedforward = dim_feedforward
         self.horizon = horizon
         self.lookback = lookback
         self.patch_len = patch_len
@@ -89,6 +91,24 @@ class PatchTransformerForecast(nn.Module):
                                                          num_layers=num_layers)
 
         self.output_projection = nn.Linear(d_model * self.n_patches, horizon)
+
+    def log_parameters(self, logger):
+        logger.info(f"Model parameters:")
+        logger.info(f"  Lookback: {self.lookback}")
+        logger.info(f"  Horizon: {self.horizon}")
+        logger.info(f"  Input dim: {self.input_dim}")
+        logger.info(f"  Target dim: {self.target_dim}")
+        logger.info(f"  Num layers: {self.num_layers}")
+        logger.info(f"  Patch length: {self.patch_len}")
+        logger.info(f"  D model: {self.d_model}")
+        logger.info(f"  N heads: {self.n_heads}")
+        logger.info(f"  Dim feedforward: {self.dim_feedforward}")
+        logger.info(f"  Dropout: {self.dropout}")
+        logger.info(f"  Causal: {self.causal}")
+        if self.positional_encoding is not None:
+            logger.info(f"  Positional encodings: sinusoidal")
+        else:
+            logger.info(f"  Positional encodings: none")
 
     def _generate_causal_mask(self, length: int,
                               device: torch.device) -> Tensor:
@@ -128,12 +148,12 @@ def PatchTransformerForecast2_exp_name(config):
     name = "PatchTransformerForecast2"
     name += f"_l{config['model']['params']['lookback']}"
     name += f"_h{config['model']['params']['horizon']}"
-    name += f"_d{config['model']['params']['input_dim']}"
+    name += f"_id{config['model']['params']['input_dim']}"
     name += f"_td{config['model']['params']['target_dim']}"
-    name += f"_n{config['model']['params']['num_layers']}"
-    name += f"_p{config['model']['params']['patch_len']}"
-    name += f"_d{config['model']['params']['d_model']}"
-    name += f"_h{config['model']['params']['n_heads']}"
+    name += f"_nl{config['model']['params']['num_layers']}"
+    name += f"_pl{config['model']['params']['patch_len']}"
+    name += f"_dm{config['model']['params']['d_model']}"
+    name += f"_nh{config['model']['params']['n_heads']}"
     name += f"_df{config['model']['params']['dim_feedforward']}"
     name += f"_nf{config['model']['params']['norm_first']}"
     name += f"_sg{config['model']['params']['swiglu']}"
@@ -148,6 +168,7 @@ def PatchTransformerForecast2_exp_name(config):
     name += f"_cs{config['model']['params']['causal']}"
 
     return name
+
 
 class PatchTransformerForecast2(nn.Module):
     """ A transformer-based model for forecasting that uses patching to handle long lookback windows.
@@ -174,7 +195,7 @@ class PatchTransformerForecast2(nn.Module):
         trans_norm: bool = False,
         layer_norm_eps: float = 1e-5,
         bias: bool = True,
-        device: bool =None,
+        device: bool = None,
         positional_encodings: str = 'sinusoidal',
         causal: bool = True,
     ) -> None:
@@ -193,6 +214,12 @@ class PatchTransformerForecast2(nn.Module):
         self.target_dim = target_dim
         self.num_layers = num_layers
         self.horizon = horizon
+        self.n_heads = n_heads
+        self.dim_feedforward = dim_feedforward
+        self.norm_first = norm_first
+        self.swiglu = swiglu
+        self.rmsnorm = rmsnorm
+        self.dropout = dropout
         self.lookback = lookback
         self.patch_len = patch_len
         self.n_patches = lookback // patch_len
@@ -230,6 +257,27 @@ class PatchTransformerForecast2(nn.Module):
                                                       norm=encoder_norm)
 
         self.output_projection = nn.Linear(d_model * self.n_patches, horizon)
+
+    def log_parameters(self, logger):
+        logger.info(f"Model parameters:")
+        logger.info(f"  Lookback: {self.lookback}")
+        logger.info(f"  Horizon: {self.horizon}")
+        logger.info(f"  Input dim: {self.input_dim}")
+        logger.info(f"  Target dim: {self.target_dim}")
+        logger.info(f"  Num layers: {self.num_layers}")
+        logger.info(f"  Patch length: {self.patch_len}")
+        logger.info(f"  D model: {self.d_model}")
+        logger.info(f"  N heads: {self.n_heads}")
+        logger.info(f"  Dim feedforward: {self.dim_feedforward}")
+        logger.info(f"  Norm first: {self.norm_first}")
+        logger.info(f"  Swiglu: {self.swiglu}")
+        logger.info(f"  Rmsnorm: {self.rmsnorm}")
+        logger.info(f"  Dropout: {self.dropout}")
+        logger.info(f"  Causal: {self.causal}")
+        if self.positional_encoding is not None:
+            logger.info(f"  Positional encodings: sinusoidal")
+        else:
+            logger.info(f"  Positional encodings: none")
 
     def _generate_causal_mask(self, length: int,
                               device: torch.device) -> Tensor:
