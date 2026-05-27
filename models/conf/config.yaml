@@ -33,31 +33,22 @@ hydra:
     search_space:
       model-params-num_layers: 
         type: categorical
-        choices: [1, 2, 3]
+        choices: [1, 2, 3, 4]
       model-params-d_model:
         type: categorical
-        choices: [16, 32, 64]
+        choices: [64, 128, 256]
       model-params-n_heads:
         type: categorical
-        choices: [2, 4]
-      model-params-patch_len:
-        type: categorical
-        choices: [5, 10]
-      model-params-norm_first:
-        type: categorical
-        choices: [true, false]
+        choices: [4, 8, 16]
       model-params-swiglu:
         type: categorical
         choices: [true, false]
-      model-params-rmsnorm:
+      model-params-dropout:
         type: categorical
-        choices: [true, false]
-
+        choices: [0, 0.1, 0.2]
 
 model-params-num_layers: 1
-model-params-d_model: 16 
-model-params-n_heads: 2
-model-params-patch_len: 5
-model-params-norm_first: false
+model-params-d_model: 64 
+model-params-n_heads: 4
 model-params-swiglu: false
-model-params-rmsnorm: false
+model-params-dropout: 0

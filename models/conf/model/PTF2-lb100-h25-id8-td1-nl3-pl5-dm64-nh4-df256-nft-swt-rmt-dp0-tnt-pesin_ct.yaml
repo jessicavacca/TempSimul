@@ -5,10 +5,10 @@ params:
   horizon: 25
   input_dim: 8
   target_dim: 1
-  num_layers: 6
-  patch_len: 10
-  d_model: 16
-  n_heads: 2
+  num_layers: 2
+  patch_len: 5
+  d_model: 64
+  n_heads: 4
   dim_feedforward: 256
   norm_first: true
   swiglu: true
