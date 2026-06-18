@@ -1,0 +1,50 @@
+exp_dir: /models/
+local: true
+projectconf:
+  total_limit: 2
+accelerator:
+  gradient_accumulation_steps: 1
+  mixed_precision: 'no'
+  log_with: wandb
+time: 12
+
+defaults:
+  - dataloader: batch2048
+  - optimizer: adamw-lr4
+  - loss: L2
+  - lr_scheduler: cos-w100
+  - override hydra/sweeper: optuna
+  - override hydra/sweeper/sampler: tpe
+  - _self_
+
+train:
+  num_epochs: 1000
+  patience: 100
+
+hydra:
+  sweeper:
+    sampler:
+      seed: 123
+    direction: minimize
+    study_name: PTBXL
+    storage: null
+    n_trials: 15
+    n_jobs: 1
+    search_space:
+      model-params-num_layers: 
+        type: categorical
+        choices: [3, 4]
+      model-params-d_model:
+        type: categorical
+        choices: [64, 128, 256]
+      model-params-n_heads:
+        type: categorical
+        choices: [4, 8, 16]
+      model-params-dropout:
+        type: categorical
+        choices: [0, 0.1, 0.2]
+
+model-params-num_layers: 1
+model-params-d_model: 64 
+model-params-n_heads: 4
+model-params-dropout: 0
