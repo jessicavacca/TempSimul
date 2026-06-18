@@ -28,17 +28,18 @@ if __name__ == "__main__":
             if 'arr_0' in data:
                 data = data['arr_0']
                 X_train = data[:, :, :-1]
+                y_train = data[:, :, -1]
             else:
                 try:
                     X_train = data['data']
+                    y_train = data['labels']
                 except:
                     X_train = data['samples']
+                    y_train = data['classes']
 
-            X_train = X_train[
-                :,
-                selected_leads
-            ]
+            X_train = X_train[:, selected_leads]
+            y_train = y_train[:, selected_leads]
             np.savez_compressed(
-                os.path.join(args.o,
-                             filename.replace('.npz', '_data.npz')), X_train)
+                os.path.join(args.o, filename.replace('.npz', '_data.npz')),
+                X_train, y_train)
             print(f"Processed {filename}")

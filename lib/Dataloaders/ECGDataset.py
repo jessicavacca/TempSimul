@@ -23,11 +23,12 @@ class ECGDataset(Dataset):
         - horizon: forecasting horizon
         - stride: stride between samples (default 1)
     """
+
     def normalize(self, x, norm):
         if norm == 'minmax':
             self.mean = np.min(self.X_train, axis=(0, 2))
-            self.std = np.max(self.X_train, axis=(0, 2)) - np.min(
-                self.X_train, axis=(0, 2))
+            self.std = np.max(self.X_train, axis=(0, 2)) - np.min(self.X_train,
+                                                                  axis=(0, 2))
             self.X_train = (np.swapaxes(self.X_train, 1, 2) -
                             self.mean) / self.std
             self.X_train = np.swapaxes(self.X_train, 1, 2)
@@ -51,24 +52,21 @@ class ECGDataset(Dataset):
             self.X_train = (self.X_train - self.mean) / (self.std + 1e-8)
         elif norm == 'iminmax':
             self.mean = np.min(self.X_train, axis=2, keepdims=True)
-            self.std = np.max(self.X_train, axis=2,
-                                keepdims=True) - np.min(
-                                    self.X_train, axis=2, keepdims=True)
+            self.std = np.max(self.X_train, axis=2, keepdims=True) - np.min(
+                self.X_train, axis=2, keepdims=True)
             self.X_train = (self.X_train - self.mean) / (self.std + 1e-8)
 
-
-    def __init__(
-        self,
-        dir,
-        dataset='train',
-        nsamples=1000,
-        norm=None,
-        norm_all=False,
-        lookback=1,
-        horizon=1,
-        stride=1,
-        channel=0,
-    ):
+    def __init__(self,
+                 dir,
+                 dataset='train',
+                 nsamples=1000,
+                 norm=None,
+                 norm_all=False,
+                 lookback=1,
+                 horizon=1,
+                 stride=1,
+                 channel=0,
+                 labels=False):
         self.dir = dir
         self.dataset = dataset
         self.horizon = horizon
@@ -76,14 +74,21 @@ class ECGDataset(Dataset):
         self.stride = stride
         self.channel = channel
         self.norm = norm
+        self.norm_all = norm_all
+        self.labels = labels
+        self.channel = channel
+
         print(f"Loading data from {self.dir}")
         datafiles = sorted(glob(f"{self.dir}/*_{dataset}_*.npz"))
         if nsamples is not None:
             data = np.load(datafiles[0])['arr_0'][:nsamples]
+            dlabels = np.load(datafiles[0])['arr_1'][:nsamples]
         else:
             data = np.load(datafiles[0])['arr_0']
+            dlabels = np.load(datafiles[0])['arr_1']
         try:
             self.X_train = data
+            self.dlabels = dlabels
         except:
             raise ValueError("Data files must contain a 'data' array")
 
@@ -98,21 +103,35 @@ class ECGDataset(Dataset):
             self.X_train[:, :, i * self.stride:i * self.stride + window_size]
             for i in range(n_samples)
         ])
-        self.y_train = np.reshape(self.X_train[:, :, channel, -self.horizon:], (self.X_train.shape[0] * self.X_train.shape[1], self.horizon))
-        self.X_train = np.reshape(self.X_train[:, :, :, :self.past], (self.X_train.shape[0] * self.X_train.shape[1], self.X_train.shape[2], self.past))
+        self.y_train = np.reshape(
+            self.X_train[:, :, channel, -self.horizon:],
+            (self.X_train.shape[0] * self.X_train.shape[1], self.horizon))
+        self.X_train = np.reshape(
+            self.X_train[:, :, :, :self.past],
+            (self.X_train.shape[0] * self.X_train.shape[1],
+             self.X_train.shape[2], self.past))
+
+        self.dlabels = np.repeat(self.dlabels, n_samples, axis=0)
+
         if norm is not None and not norm_all:
             self.normalize(self.X_train, norm)
 
         print(f'{self.dataset}')
         print(f'X_train shape is {self.X_train.shape}')
         print(f'y_train shape is {self.y_train.shape}')
+        if self.labels:
+            print(f'dlabels shape is {self.dlabels.shape}')
+
         print(f'NORM={norm}')
 
     def __len__(self):
         return len(self.y_train)
 
     def __getitem__(self, idx):
-        return self.X_train[idx], self.y_train[idx]
+        if self.labels:
+            return self.X_train[idx], self.y_train[idx], self.dlabels[idx]
+        else:
+            return self.X_train[idx], self.y_train[idx]
 
 
 
