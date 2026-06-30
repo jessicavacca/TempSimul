@@ -53,6 +53,7 @@ class PatchTransformerExoForecast(nn.Module):
         lookback: int,
         horizon: int,
         input_dim: int,
+        exo_dim: int, # <--- added row
         target_dim: int,
         condition_dim: int,
         num_layers: int,
@@ -84,6 +85,7 @@ class PatchTransformerExoForecast(nn.Module):
             raise ValueError("lookback must be divisible by patch_len")
 
         self.input_dim = input_dim
+        self.exo_dim = exo_dim # <--- added row
         self.target_dim = target_dim
         self.num_layers = num_layers
         self.horizon = horizon
@@ -115,8 +117,9 @@ class PatchTransformerExoForecast(nn.Module):
         self.patch_projection = nn.Conv1d(patch_len * input_dim,
                                           d_model,
                                           kernel_size=1)
-
-        self.patch_exogenous_projection = nn.Conv1d(patch_len * input_dim,
+        
+        # ---> MODIFICA QUESTA RIGA (sostituisci input_dim con exo_dim) <---
+        self.patch_exogenous_projection = nn.Conv1d(patch_len * exo_dim,
                                                     d_model,
                                                     kernel_size=1)
 
@@ -181,16 +184,17 @@ class PatchTransformerExoForecast(nn.Module):
 
         # Create exogenous patches
         if exo is None:
-            exo = torch.zeros_like(x)
+            # Assicurati di usare exo_dim per i layer vuoti se non ci sono dati!
+            exo = torch.zeros(batch_size, self.exo_dim, n_samples, device=x.device)
 
         exo = exo.unfold(dimension=2, size=self.patch_len, step=self.patch_len)
-        exo = exo.contiguous().view(batch_size, n_channels * self.patch_len,
-                                    -1)
+        exo = exo.contiguous().view(batch_size, self.exo_dim * self.patch_len, -1)
+        
         exo = self.patch_exogenous_projection(exo)
         exo = exo.permute(0, 2, 1)  #(batch_size, input_dim, lookback)
 
         if cond is None:
-            cond = torch.zeros(batch_size, self.input_dim, device=x.device)
+            cond = torch.zeros(batch_size, self.condition_dim, device=x.device)
         else:
             if cond.dim() == 2:
                 cond = cond.unsqueeze(1)  # (batch_size, 1, condition_dim)
