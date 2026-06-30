@@ -80,12 +80,27 @@ class ECGDataset(Dataset):
 
         print(f"Loading data from {self.dir}")
         datafiles = sorted(glob(f"{self.dir}/*_{dataset}_*.npz"))
+        # if nsamples is not None:
+        #     data = np.load(datafiles[0])['arr_0'][:nsamples]
+        #     dlabels = np.load(datafiles[0])['arr_1'][:nsamples]
+        # else:
+        #     data = np.load(datafiles[0])['arr_0']
+        #     dlabels = np.load(datafiles[0])['arr_1']
+        file_content = np.load(datafiles[0])
+        
         if nsamples is not None:
-            data = np.load(datafiles[0])['arr_0'][:nsamples]
-            dlabels = np.load(datafiles[0])['arr_1'][:nsamples]
+            data = file_content['arr_0'][:nsamples]
+            # Controlla se 'arr_1' esiste prima di provare a caricarlo
+            if 'arr_1' in file_content:
+                dlabels = file_content['arr_1'][:nsamples]
+            else:
+                dlabels = None
         else:
-            data = np.load(datafiles[0])['arr_0']
-            dlabels = np.load(datafiles[0])['arr_1']
+            data = file_content['arr_0']
+            if 'arr_1' in file_content:
+                dlabels = file_content['arr_1']
+            else:
+                dlabels = None
         try:
             self.X_train = data
             self.dlabels = dlabels
@@ -124,14 +139,21 @@ class ECGDataset(Dataset):
 
         print(f'NORM={norm}')
 
+    # def __len__(self):
+    #     return len(self.y_train)
+
+    # def __getitem__(self, idx):
+    #     if self.labels:
+    #         return self.X_train[idx], self.y_train[idx], self.dlabels[idx]
+    #     else:
+    #         return self.X_train[idx], self.y_train[idx]
     def __len__(self):
         return len(self.y_train)
 
     def __getitem__(self, idx):
-        if self.labels:
-            return self.X_train[idx], self.y_train[idx], self.dlabels[idx]
-        else:
-            return self.X_train[idx], self.y_train[idx]
+        # Ignoriamo le labels per evitare disallineamenti di shape
+        # Restituiamo sempre e solo (Input Storico, Target Futuro)
+        return self.X_train[idx], self.y_train[idx]
 
 
 
