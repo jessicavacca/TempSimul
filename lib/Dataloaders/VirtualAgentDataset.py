@@ -3,24 +3,38 @@ import torch
 from torch.utils.data import Dataset
 
 class VirtualAgentDataset(Dataset):
-    def __init__(self, npz_path, split='train'):
+    def __init__(self, npz_path, split='train', train_ratio=0.7, val_ratio=0.15, norm='zscore'):
         """
-        Carica il dataset del Virtual Agent e lo prepara per il Transformer.
-        """
-        # 1. CARICAMENTO DATI
-        data = np.load(npz_path)
-        X_endo_all = data['X_endo']
-        X_exo_all = data['X_exo']
-        X_cond_all = data['X_cond']
-        Y_target_all = data['Y_target']
-
-        total_samples = len(X_endo_all)
+        Carica, formatta e normalizza il dataset del Virtual Agent.
         
-        # 2. SPLITTING (70% Train, 15% Val, 15% Test)
-        # Usiamo indici sequenziali per rispettare l'ordine temporale
-        train_end = int(total_samples * 0.7)
-        val_end = train_end + int(total_samples * 0.15)
-
+        Parametri:
+        - npz_path: percorso al file VA_Dataset_Tensor.npz
+        - split: 'train', 'val' o 'test'
+        - train_ratio: percentuale di dati usati per il training (default 70%)
+        - val_ratio: percentuale di dati usati per la validazione (default 15%)
+        - norm: tipo di normalizzazione (es. 'zscore' o None)
+        """
+        self.split = split
+        self.norm = norm
+        
+        # 1. Caricamento del Tensore Grezzo
+        data = np.load(npz_path)
+        
+        # 2. FIX DIMENSIONALE DEFINITIVO (Cruciale per il Transformer!)
+        # Il file .npz ha forma (Batch, Tempo, Canali).
+        # Il modello PyTorch VUOLE (Batch, Canali, Tempo).
+        X_endo_full = np.transpose(data['X_endo'], (0, 2, 1))   # (N, 8, lookback)
+        X_exo_full = np.transpose(data['X_exo'], (0, 2, 1))     # (N, 18, lookback)
+        Y_target_full = np.transpose(data['Y_target'], (0, 2, 1)) # (N, 1, horizon)
+        
+        # FIX PER I DATI CONDIZIONALI (cond): Vettore statico, prendiamo l'ultimo frame
+        X_cond_full = data['X_cond'][:, -1, :]                  # (N, 9)
+        
+        # 3. SPLIT DATASET
+        total_samples = len(X_endo_full)
+        train_end = int(total_samples * train_ratio)
+        val_end = int(total_samples * (train_ratio + val_ratio))
+        
         if split == 'train':
             idx_start, idx_end = 0, train_end
         elif split == 'val':
@@ -28,58 +42,70 @@ class VirtualAgentDataset(Dataset):
         elif split == 'test':
             idx_start, idx_end = val_end, total_samples
         else:
-            raise ValueError("Il parametro 'split' deve essere 'train', 'val', o 'test'")
-
-        self.X_endo = X_endo_all[idx_start:idx_end]
-        self.X_exo = X_exo_all[idx_start:idx_end]
-        self.X_cond = X_cond_all[idx_start:idx_end]
-        self.Y_target = Y_target_all[idx_start:idx_end]
-
-        # 3. NORMALIZZAZIONE (Z-Score Globale)
-        # Regola d'oro: Le statistiche (media e dev. std) si calcolano SOLO sul Train set 
-        # per non "sbirciare" nel futuro (Data Leakage), poi si applicano a tutti gli split.
-        self.mean_endo = np.mean(X_endo_all[:train_end], axis=(0, 1), keepdims=True)
-        self.std_endo = np.std(X_endo_all[:train_end], axis=(0, 1), keepdims=True) + 1e-8
-
-        self.mean_exo = np.mean(X_exo_all[:train_end], axis=(0, 1), keepdims=True)
-        self.std_exo = np.std(X_exo_all[:train_end], axis=(0, 1), keepdims=True) + 1e-8
-
-        self.mean_cond = np.mean(X_cond_all[:train_end], axis=(0, 1), keepdims=True)
-        self.std_cond = np.std(X_cond_all[:train_end], axis=(0, 1), keepdims=True) + 1e-8
-
-        self.mean_y = np.mean(Y_target_all[:train_end], axis=(0, 1), keepdims=True)
-        self.std_y = np.std(Y_target_all[:train_end], axis=(0, 1), keepdims=True) + 1e-8
-
-        # Applichiamo la normalizzazione
-        self.X_endo = (self.X_endo - self.mean_endo) / self.std_endo
-        self.X_exo = (self.X_exo - self.mean_exo) / self.std_exo
-        self.X_cond = (self.X_cond - self.mean_cond) / self.std_cond
-        self.Y_target = (self.Y_target - self.mean_y) / self.std_y
-
-        # 4. CONVERSIONE IN TENSORI PYTORCH
+            raise ValueError("Lo split deve essere 'train', 'val' o 'test'.")
+            
+        self.X_endo = X_endo_full[idx_start:idx_end]
+        self.X_exo = X_exo_full[idx_start:idx_end]
+        self.X_cond = X_cond_full[idx_start:idx_end]
+        self.Y_target = Y_target_full[idx_start:idx_end]
+        
+        # 4. NORMALIZZAZIONE (Z-SCORE INTELLIGENTE)
+        if self.norm == 'zscore':
+            # Statistiche calcolate SOLO sul TRAIN per evitare Data Leakage
+            train_X_endo = X_endo_full[:train_end] 
+            train_X_exo = X_exo_full[:train_end]   
+            train_X_cond = X_cond_full[:train_end]
+            
+            # --- 4.1 ENDO (Distanze 3D) ---
+            # Troviamo i valori validi: escludiamo i giocatori assenti (che ora sono -1.0!)
+            valid_train_endo = train_X_endo[train_X_endo != -1.0]
+            self.endo_mean = np.mean(valid_train_endo) if len(valid_train_endo) > 0 else 0.0
+            self.endo_std = np.std(valid_train_endo) + 1e-8 if len(valid_train_endo) > 0 else 1.0
+            
+            # Applichiamo la normalizzazione SOLO ai giocatori presenti.
+            # Convertiamo i -1.0 in 0.0 per la rete neurale (che in Z-score significa "neutrale")
+            endo_mask = self.X_endo != -1.0
+            self.X_endo = np.where(endo_mask, (self.X_endo - self.endo_mean) / self.endo_std, 0.0)
+            
+            # Stessa cosa per il target (per sicurezza estrema, anche se l'estrattore li ha già filtrati)
+            target_mask = self.Y_target != -1.0
+            self.Y_target = np.where(target_mask, (self.Y_target - self.endo_mean) / self.endo_std, 0.0)
+            
+            # --- 4.2 EXO (18 Variabili ambientali) ---
+            # Mascheriamo i 999.0 impostati da Extract_VA trasformandoli in NaN temporanei
+            exo_train_nan = np.where(train_X_exo >= 900.0, np.nan, train_X_exo)
+            
+            # Calcoliamo medie separate per ogni canale (ignorando i NaN!)
+            self.exo_mean = np.nanmean(exo_train_nan, axis=(0, 2), keepdims=True)
+            self.exo_std = np.nanstd(exo_train_nan, axis=(0, 2), keepdims=True) + 1e-8
+            
+            # Rimuoviamo eventuali NaN rimasti se un canale era interamente vuoto
+            self.exo_mean = np.nan_to_num(self.exo_mean, nan=0.0)
+            self.exo_std = np.nan_to_num(self.exo_std, nan=1.0)
+            
+            # Normalizziamo solo i valori reali. I 999.0 verranno rimpiazzati da uno 0.0 piatto e inoffensivo!
+            valid_exo_mask = self.X_exo < 900.0
+            self.X_exo = np.where(valid_exo_mask, (self.X_exo - self.exo_mean) / self.exo_std, 0.0)
+            
+            # --- 4.3 COND (Variabili Statiche) ---
+            # RowSide (indici 0-7) restano raw: -1, 0, 1
+            # Normalizziamo solo il TeamScore (indice 8) (i 30.0 vuoti faranno media normalmente)
+            train_score = train_X_cond[:, 8]
+            self.score_mean = np.mean(train_score)
+            self.score_std = np.std(train_score) + 1e-8
+            
+            self.X_cond[:, 8] = (self.X_cond[:, 8] - self.score_mean) / self.score_std
+            
+        # 5. TENSORIZZAZIONE
         self.X_endo = torch.tensor(self.X_endo, dtype=torch.float32)
         self.X_exo = torch.tensor(self.X_exo, dtype=torch.float32)
         self.X_cond = torch.tensor(self.X_cond, dtype=torch.float32)
         self.Y_target = torch.tensor(self.Y_target, dtype=torch.float32)
 
-        print(f"[{split.upper()}] Caricati {len(self.X_endo)} campioni.")
+        print(f"[{split.upper()}] Creato con {len(self.X_endo)} campioni. (Norm: {self.norm})")
 
     def __len__(self):
         return len(self.X_endo)
 
     def __getitem__(self, idx):
-        # I nostri dati sono (Tempo, Canali) -> (100, 8)
-        # Il modello vuole (Canali, Tempo) -> (8, 100)
-        # Usiamo .permute(1, 0) per scambiare la dimensione 0 e 1 per le feature di input
-        
-        x_en = self.X_endo[idx].permute(1, 0) 
-        x_ex = self.X_exo[idx].permute(1, 0)
-        # ---> LA MODIFICA È QUI <---
-        # I dati condizionali sono un contesto globale. Prendiamo solo l'ULTIMO frame della finestra.
-        # Niente permute, restituiamo un vettore 1D di 9 elementi (che il Dataloader farà diventare Batch x 9)
-        x_co = self.X_cond[idx][-1]
-        
-        # Y_target rimane (Horizon, Canali) perché il Transformer in output vuole così
-        y_tar = self.Y_target[idx]
-
-        return x_en, x_ex, x_co, y_tar
+        return self.X_endo[idx], self.X_exo[idx], self.X_cond[idx], self.Y_target[idx]

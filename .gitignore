@@ -20,3 +20,4 @@ lib/paths.py
 models/outputs/**
 models/multirun/**
 models/logs/**
+storage/**
